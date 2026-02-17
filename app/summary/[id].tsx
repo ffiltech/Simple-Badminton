@@ -7,7 +7,7 @@ import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
 import { MatchState, FoulEvent } from '../../src/logic/ScoreEngine';
 import { getMatchHistory } from '../../src/logic/Storage';
-import { Trophy, Info, AlertTriangle, Activity, Share2 } from 'lucide-react-native';
+import { Trophy, Info, AlertTriangle, Activity, Share2, Clock } from 'lucide-react-native';
 import { Language, getTranslation, getFoulTypeName } from '../../src/logic/i18n';
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
@@ -72,6 +72,15 @@ export default function SummaryScreen() {
     const p1Sets = match.sets.filter(s => s.player1Score > s.player2Score).length;
     const p2Sets = match.sets.filter(s => s.player2Score > s.player1Score).length;
 
+    const formatDuration = (ms: number) => {
+        const totalSeconds = Math.floor(ms / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    };
+
+    const matchDuration = match.endTime ? match.endTime - match.startTime : 0;
+
     const allFouls: (FoulEvent & { setIndex: number })[] = [];
     match.sets.forEach((set, idx) => {
         set.fouls.forEach(f => allFouls.push({ ...f, setIndex: idx }));
@@ -132,6 +141,12 @@ export default function SummaryScreen() {
                             <Trophy size={64} color={Colors.primary} style={{ marginBottom: Spacing.md }} />
                             <Typography variant="h1">{winnerName} {t.wins}</Typography>
                             <Typography variant="subtitle">{t.matchCompleted} {new Date(match.endTime || 0).toLocaleTimeString()}</Typography>
+                            <View style={styles.durationContainer}>
+                                <Clock size={16} color={Colors.textMuted} />
+                                <Typography variant="body" color={Colors.textMuted} style={{ marginLeft: 6 }}>
+                                    {t.duration}: {formatDuration(matchDuration)}
+                                </Typography>
+                            </View>
                         </View>
 
                         <Card style={styles.setsCard}>
@@ -207,6 +222,12 @@ export default function SummaryScreen() {
                             <Trophy size={64} color={Colors.primary} style={{ marginBottom: Spacing.md }} />
                             <Typography variant="h1">{winnerName} {t.wins}</Typography>
                             <Typography variant="subtitle">{t.matchCompleted} {new Date(match.endTime || 0).toLocaleTimeString()}</Typography>
+                            <View style={styles.durationContainer}>
+                                <Clock size={16} color={Colors.textMuted} />
+                                <Typography variant="body" color={Colors.textMuted} style={{ marginLeft: 6 }}>
+                                    {t.duration}: {formatDuration(matchDuration)}
+                                </Typography>
+                            </View>
                         </View>
 
                         <Card style={styles.setsCard}>
@@ -440,5 +461,10 @@ const styles = StyleSheet.create({
     },
     timelineRight: {
         flex: 1,
+    },
+    durationContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: Spacing.sm,
     },
 });

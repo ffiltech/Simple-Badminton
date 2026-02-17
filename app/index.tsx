@@ -23,8 +23,6 @@ export default function HomeScreen() {
     const t = getTranslation(language);
 
     useEffect(() => {
-        // Clear history on first load for production build
-        clearAllHistory();
         loadHistory();
         loadAutoSavePreference();
         loadLanguagePreference();

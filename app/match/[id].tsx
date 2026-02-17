@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, SafeAreaView, Modal, ScrollView, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors, Spacing, Radius } from '../../src/constants/Theme';
@@ -7,7 +7,7 @@ import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
 import { MatchState, INITIAL_MATCH_STATE, addPoint, subtractPoint, addFoul, changeService, PlayerNumber, FoulType } from '../../src/logic/ScoreEngine';
 import { saveMatchToHistory } from '../../src/logic/Storage';
-import { Undo2, ChevronLeft, Flag, Activity, Plus, Minus, Repeat } from 'lucide-react-native';
+import { Undo2, ChevronLeft, Flag, Activity, Plus, Minus, Repeat, Clock } from 'lucide-react-native';
 import { Language, getTranslation, getFoulTypeName } from '../../src/logic/i18n';
 
 const FOUL_TYPES: FoulType[] = ['Service', 'Net', 'Out', 'Contact', 'Double', 'Other'];
@@ -29,8 +29,37 @@ export default function MatchScreen() {
     const [history, setHistory] = useState<MatchState[]>([]);
     const [foulModalVisible, setFoulModalVisible] = useState(false);
     const [foulTarget, setFoulTarget] = useState<PlayerNumber | null>(null);
+    const [elapsedTime, setElapsedTime] = useState(0);
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
 
     const isLandscape = width > height;
+
+    // Timer effect
+    useEffect(() => {
+        if (match.status === 'In Progress') {
+            timerRef.current = setInterval(() => {
+                setElapsedTime(Date.now() - match.startTime);
+            }, 1000);
+        } else {
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+            }
+        }
+
+        return () => {
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+            }
+        };
+    }, [match.status, match.startTime]);
+
+    const formatTime = (ms: number) => {
+        const totalSeconds = Math.floor(ms / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    };
 
     const handleAddPoint = (player: PlayerNumber, reason: any = 'Winner') => {
         setHistory([...history, match]);
@@ -196,6 +225,12 @@ export default function MatchScreen() {
                 </TouchableOpacity>
                 <View style={{ flex: 1, alignItems: 'center' }}>
                     <Typography variant="h3">{t.set} {match.currentSet + 1} ({winScore} {t.points})</Typography>
+                    <View style={styles.timerContainer}>
+                        <Clock size={12} color={Colors.textMuted} />
+                        <Typography variant="caption" color={Colors.textMuted} style={{ marginLeft: 4, fontSize: 11 }}>
+                            {formatTime(elapsedTime)}
+                        </Typography>
+                    </View>
                     <TouchableOpacity
                         onPress={handleManualServiceChange}
                         style={styles.serviceChangeButton}
@@ -302,6 +337,13 @@ const styles = StyleSheet.create({
         padding: Spacing.md,
         borderBottomWidth: 1,
         borderBottomColor: Colors.border,
+    },
+    timerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 2,
+        paddingHorizontal: Spacing.xs,
+        paddingVertical: 2,
     },
     serviceChangeButton: {
         flexDirection: 'row',

@@ -56,6 +56,7 @@ export interface Translations {
     matchSummary: string;
     wins: string;
     matchCompleted: string;
+    duration: string;
     sets: string;
     vs: string;
     foulAnalysis: string;
@@ -129,6 +130,7 @@ export const translations: Record<Language, Translations> = {
         matchSummary: 'Riepilogo Partita',
         wins: 'Vince!',
         matchCompleted: 'Partita conclusa il',
+        duration: 'Durata',
         sets: 'Sets',
         vs: 'VS',
         foulAnalysis: 'Analisi Falli',
@@ -200,6 +202,7 @@ export const translations: Record<Language, Translations> = {
         matchSummary: 'Match Summary',
         wins: 'Wins!',
         matchCompleted: 'Match completed at',
+        duration: 'Duration',
         sets: 'Sets',
         vs: 'VS',
         foulAnalysis: 'Foul Analysis',
