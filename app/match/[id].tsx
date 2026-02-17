@@ -226,8 +226,8 @@ export default function MatchScreen() {
                 <View style={{ flex: 1, alignItems: 'center' }}>
                     <Typography variant="h3">{t.set} {match.currentSet + 1} ({winScore} {t.points})</Typography>
                     <View style={styles.timerContainer}>
-                        <Clock size={12} color={Colors.textMuted} />
-                        <Typography variant="caption" color={Colors.textMuted} style={{ marginLeft: 4, fontSize: 11 }}>
+                        <Clock size={16} color={Colors.textMuted} />
+                        <Typography variant="caption" color={Colors.textMuted} style={{ marginLeft: 6, fontSize: 14, fontWeight: '600' }}>
                             {formatTime(elapsedTime)}
                         </Typography>
                     </View>

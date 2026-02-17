@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Switch } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors, Spacing, Radius } from '../src/constants/Theme';
 import { Typography } from '../src/components/Typography';
 import { Button } from '../src/components/Button';
@@ -23,10 +23,16 @@ export default function HomeScreen() {
     const t = getTranslation(language);
 
     useEffect(() => {
-        loadHistory();
         loadAutoSavePreference();
         loadLanguagePreference();
     }, []);
+
+    // Reload history whenever the screen comes into focus
+    useFocusEffect(
+        useCallback(() => {
+            loadHistory();
+        }, [])
+    );
 
     const loadHistory = async () => {
         const data = await getMatchHistory();
