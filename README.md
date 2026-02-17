@@ -6,6 +6,13 @@ A modern, feature-rich React Native app for tracking badminton matches with real
 [![Expo](https://img.shields.io/badge/Expo-~54.0-blue.svg)](https://expo.dev/)
 [![React Native](https://img.shields.io/badge/React%20Native-0.81-green.svg)](https://reactnative.dev/)
 
+## 📥 Download
+
+**Latest Release: [v1.0.0](https://github.com/ffiltech/Simple-Badminton/releases/tag/v1.0.0)**
+
+- **Android APK**: Available in the release page
+- **Security**: [VirusTotal Scan Result](https://www.virustotal.com/gui/file/b21f3704d942511c9d4e25a9f021fcdb0bfe72e46c3dda0544154c494a0f4434) - Clean ✅
+
 ## ✨ Features
 
 - **📊 Real-time Score Tracking** - Keep track of points as the match progresses
