@@ -118,86 +118,165 @@ export default function SummaryScreen() {
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
                 <Typography variant="h2">{t.matchSummary}</Typography>
-                <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
-                    <Share2 size={24} color={Colors.primary} />
-                </TouchableOpacity>
+                {Platform.OS !== 'web' && (
+                    <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
+                        <Share2 size={24} color={Colors.primary} />
+                    </TouchableOpacity>
+                )}
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
-                <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1.0 }}>
-                    <View style={styles.winnerCardContainer}>
-                        <Trophy size={64} color={Colors.primary} style={{ marginBottom: Spacing.md }} />
-                        <Typography variant="h1">{winnerName} {t.wins}</Typography>
-                        <Typography variant="subtitle">{t.matchCompleted} {new Date(match.endTime || 0).toLocaleTimeString()}</Typography>
-                    </View>
-
-                    <Card style={styles.setsCard}>
-                        <View style={styles.setsHeader}>
-                            <Info size={20} color={Colors.primary} />
-                            <Typography variant="h3" style={{ marginLeft: 8 }}>{t.sets}</Typography>
+                {Platform.OS === 'web' ? (
+                    <View>
+                        <View style={styles.winnerCardContainer}>
+                            <Trophy size={64} color={Colors.primary} style={{ marginBottom: Spacing.md }} />
+                            <Typography variant="h1">{winnerName} {t.wins}</Typography>
+                            <Typography variant="subtitle">{t.matchCompleted} {new Date(match.endTime || 0).toLocaleTimeString()}</Typography>
                         </View>
 
-                        <View style={styles.setsRow}>
-                            <View style={styles.playerSetsColumn}>
-                                <Typography variant="h2" color={Colors.primary}>{match.player1Name}</Typography>
-                                <Typography variant="body" color={Colors.textMuted}>{p1Sets} {t.sets}</Typography>
+                        <Card style={styles.setsCard}>
+                            <View style={styles.setsHeader}>
+                                <Info size={20} color={Colors.primary} />
+                                <Typography variant="h3" style={{ marginLeft: 8 }}>{t.sets}</Typography>
                             </View>
 
-                            <Typography variant="h2" color={Colors.textMuted}>{t.vs}</Typography>
+                            <View style={styles.setsRow}>
+                                <View style={styles.playerSetsColumn}>
+                                    <Typography variant="h2" color={Colors.primary}>{match.player1Name}</Typography>
+                                    <Typography variant="body" color={Colors.textMuted}>{p1Sets} {t.sets}</Typography>
+                                </View>
 
-                            <View style={styles.playerSetsColumn}>
-                                <Typography variant="h2" color={Colors.secondary} style={{ textAlign: 'right' }}>{match.player2Name}</Typography>
-                                <Typography variant="body" color={Colors.textMuted} style={{ textAlign: 'right' }}>{p2Sets} {t.sets}</Typography>
-                            </View>
-                        </View>
+                                <Typography variant="h2" color={Colors.textMuted}>{t.vs}</Typography>
 
-                        {match.sets.map((set, i) => (
-                            <View key={i} style={styles.setRow}>
-                                <Typography variant="body">{t.set} {i + 1}</Typography>
-                                <View style={styles.setScores}>
-                                    <Typography variant="h3" color={set.player1Score > set.player2Score ? Colors.primary : Colors.textMuted}>
-                                        {set.player1Score}
-                                    </Typography>
-                                    <Typography variant="body" color={Colors.textMuted} style={{ marginHorizontal: Spacing.sm }}>-</Typography>
-                                    <Typography variant="h3" color={set.player2Score > set.player1Score ? Colors.secondary : Colors.textMuted}>
-                                        {set.player2Score}
-                                    </Typography>
+                                <View style={styles.playerSetsColumn}>
+                                    <Typography variant="h2" color={Colors.secondary} style={{ textAlign: 'right' }}>{match.player2Name}</Typography>
+                                    <Typography variant="body" color={Colors.textMuted} style={{ textAlign: 'right' }}>{p2Sets} {t.sets}</Typography>
                                 </View>
                             </View>
-                        ))}
-                    </Card>
 
-                    <Card style={styles.foulsCard}>
-                        <View style={styles.foulsHeader}>
-                            <AlertTriangle size={20} color={Colors.danger} />
-                            <Typography variant="h3" style={{ marginLeft: 8 }}>{t.foulAnalysis}</Typography>
-                        </View>
-
-                        <View style={styles.foulsRow}>
-                            <View style={styles.foulColumn}>
-                                <Typography variant="h2" color={Colors.primary}>{match.player1Name}</Typography>
-                                <Typography variant="body" color={Colors.textMuted}>{p1Fouls.length} {t.fouls}</Typography>
-                                {p1Fouls.map((f, i) => (
-                                    <View key={i} style={styles.foulItem}>
-                                        <View style={[styles.foulDot, { backgroundColor: Colors.danger }]} />
-                                        <Typography variant="caption">{getFoulTypeName(f.type, language)}</Typography>
+                            {match.sets.map((set, i) => (
+                                <View key={i} style={styles.setRow}>
+                                    <Typography variant="body">{t.set} {i + 1}</Typography>
+                                    <View style={styles.setScores}>
+                                        <Typography variant="h3" color={set.player1Score > set.player2Score ? Colors.primary : Colors.textMuted}>
+                                            {set.player1Score}
+                                        </Typography>
+                                        <Typography variant="body" color={Colors.textMuted} style={{ marginHorizontal: Spacing.sm }}>-</Typography>
+                                        <Typography variant="h3" color={set.player2Score > set.player1Score ? Colors.secondary : Colors.textMuted}>
+                                            {set.player2Score}
+                                        </Typography>
                                     </View>
-                                ))}
+                                </View>
+                            ))}
+                        </Card>
+
+                        <Card style={styles.foulsCard}>
+                            <View style={styles.foulsHeader}>
+                                <AlertTriangle size={20} color={Colors.danger} />
+                                <Typography variant="h3" style={{ marginLeft: 8 }}>{t.foulAnalysis}</Typography>
                             </View>
 
-                            <View style={styles.foulColumn}>
-                                <Typography variant="h2" color={Colors.secondary} style={{ textAlign: 'right' }}>{match.player2Name}</Typography>
-                                <Typography variant="body" color={Colors.textMuted} style={{ textAlign: 'right' }}>{p2Fouls.length} {t.fouls}</Typography>
-                                {p2Fouls.map((f, i) => (
-                                    <View key={i} style={[styles.foulItem, { justifyContent: 'flex-end' }]}>
-                                        <Typography variant="caption">{getFoulTypeName(f.type, language)}</Typography>
-                                        <View style={[styles.foulDot, { backgroundColor: Colors.danger, marginLeft: 8 }]} />
-                                    </View>
-                                ))}
+                            <View style={styles.foulsRow}>
+                                <View style={styles.foulColumn}>
+                                    <Typography variant="h2" color={Colors.primary}>{match.player1Name}</Typography>
+                                    <Typography variant="body" color={Colors.textMuted}>{p1Fouls.length} {t.fouls}</Typography>
+                                    {p1Fouls.map((f, i) => (
+                                        <View key={i} style={styles.foulItem}>
+                                            <View style={[styles.foulDot, { backgroundColor: Colors.danger }]} />
+                                            <Typography variant="caption">{getFoulTypeName(f.type, language)}</Typography>
+                                        </View>
+                                    ))}
+                                </View>
+
+                                <View style={styles.foulColumn}>
+                                    <Typography variant="h2" color={Colors.secondary} style={{ textAlign: 'right' }}>{match.player2Name}</Typography>
+                                    <Typography variant="body" color={Colors.textMuted} style={{ textAlign: 'right' }}>{p2Fouls.length} {t.fouls}</Typography>
+                                    {p2Fouls.map((f, i) => (
+                                        <View key={i} style={[styles.foulItem, { justifyContent: 'flex-end' }]}>
+                                            <Typography variant="caption">{getFoulTypeName(f.type, language)}</Typography>
+                                            <View style={[styles.foulDot, { backgroundColor: Colors.danger, marginLeft: 8 }]} />
+                                        </View>
+                                    ))}
+                                </View>
                             </View>
+                        </Card>
+                    </View>
+                ) : (
+                    <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1.0 }}>
+                        <View style={styles.winnerCardContainer}>
+                            <Trophy size={64} color={Colors.primary} style={{ marginBottom: Spacing.md }} />
+                            <Typography variant="h1">{winnerName} {t.wins}</Typography>
+                            <Typography variant="subtitle">{t.matchCompleted} {new Date(match.endTime || 0).toLocaleTimeString()}</Typography>
                         </View>
-                    </Card>
-                </ViewShot>
+
+                        <Card style={styles.setsCard}>
+                            <View style={styles.setsHeader}>
+                                <Info size={20} color={Colors.primary} />
+                                <Typography variant="h3" style={{ marginLeft: 8 }}>{t.sets}</Typography>
+                            </View>
+
+                            <View style={styles.setsRow}>
+                                <View style={styles.playerSetsColumn}>
+                                    <Typography variant="h2" color={Colors.primary}>{match.player1Name}</Typography>
+                                    <Typography variant="body" color={Colors.textMuted}>{p1Sets} {t.sets}</Typography>
+                                </View>
+
+                                <Typography variant="h2" color={Colors.textMuted}>{t.vs}</Typography>
+
+                                <View style={styles.playerSetsColumn}>
+                                    <Typography variant="h2" color={Colors.secondary} style={{ textAlign: 'right' }}>{match.player2Name}</Typography>
+                                    <Typography variant="body" color={Colors.textMuted} style={{ textAlign: 'right' }}>{p2Sets} {t.sets}</Typography>
+                                </View>
+                            </View>
+
+                            {match.sets.map((set, i) => (
+                                <View key={i} style={styles.setRow}>
+                                    <Typography variant="body">{t.set} {i + 1}</Typography>
+                                    <View style={styles.setScores}>
+                                        <Typography variant="h3" color={set.player1Score > set.player2Score ? Colors.primary : Colors.textMuted}>
+                                            {set.player1Score}
+                                        </Typography>
+                                        <Typography variant="body" color={Colors.textMuted} style={{ marginHorizontal: Spacing.sm }}>-</Typography>
+                                        <Typography variant="h3" color={set.player2Score > set.player1Score ? Colors.secondary : Colors.textMuted}>
+                                            {set.player2Score}
+                                        </Typography>
+                                    </View>
+                                </View>
+                            ))}
+                        </Card>
+
+                        <Card style={styles.foulsCard}>
+                            <View style={styles.foulsHeader}>
+                                <AlertTriangle size={20} color={Colors.danger} />
+                                <Typography variant="h3" style={{ marginLeft: 8 }}>{t.foulAnalysis}</Typography>
+                            </View>
+
+                            <View style={styles.foulsRow}>
+                                <View style={styles.foulColumn}>
+                                    <Typography variant="h2" color={Colors.primary}>{match.player1Name}</Typography>
+                                    <Typography variant="body" color={Colors.textMuted}>{p1Fouls.length} {t.fouls}</Typography>
+                                    {p1Fouls.map((f, i) => (
+                                        <View key={i} style={styles.foulItem}>
+                                            <View style={[styles.foulDot, { backgroundColor: Colors.danger }]} />
+                                            <Typography variant="caption">{getFoulTypeName(f.type, language)}</Typography>
+                                        </View>
+                                    ))}
+                                </View>
+
+                                <View style={styles.foulColumn}>
+                                    <Typography variant="h2" color={Colors.secondary} style={{ textAlign: 'right' }}>{match.player2Name}</Typography>
+                                    <Typography variant="body" color={Colors.textMuted} style={{ textAlign: 'right' }}>{p2Fouls.length} {t.fouls}</Typography>
+                                    {p2Fouls.map((f, i) => (
+                                        <View key={i} style={[styles.foulItem, { justifyContent: 'flex-end' }]}>
+                                            <Typography variant="caption">{getFoulTypeName(f.type, language)}</Typography>
+                                            <View style={[styles.foulDot, { backgroundColor: Colors.danger, marginLeft: 8 }]} />
+                                        </View>
+                                    ))}
+                                </View>
+                            </View>
+                        </Card>
+                    </ViewShot>
+                )}
 
                 <Card style={styles.timelineCard}>
                     <View style={styles.timelineHeader}>

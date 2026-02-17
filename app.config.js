@@ -31,7 +31,7 @@ export default {
         userInterfaceStyle: "dark",
         scheme: "badminton-manager",
         newArchEnabled: true,
-        platforms: ["ios", "android"],
+        platforms: ["ios", "android", "web"],
         splash: {
             image: "./assets/splash-icon.png",
             resizeMode: "contain",

@@ -1,6 +1,7 @@
 {
-  "name": "app_antigravity",
+  "name": "simple-badminton",
   "version": "1.0.0",
+  "description": "A React Native Expo app for managing badminton matches with score tracking and statistics",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
@@ -8,6 +9,24 @@
     "ios": "expo start --ios",
     "web": "expo start --web"
   },
+  "keywords": [
+    "badminton",
+    "score-tracker",
+    "react-native",
+    "expo",
+    "sports",
+    "match-statistics"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ffiltech/Simple-Badminton.git"
+  },
+  "author": "Simple Badminton Contributors",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ffiltech/Simple-Badminton/issues"
+  },
+  "homepage": "https://github.com/ffiltech/Simple-Badminton#readme",
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
     "expo": "~54.0.33",
@@ -27,7 +46,6 @@
     "react-native-view-shot": "^4.0.3",
     "react-native-web": "^0.21.0"
   },
-  "private": true,
   "devDependencies": {
     "@types/react": "~19.1.10",
     "@types/react-native": "^0.72.8",
