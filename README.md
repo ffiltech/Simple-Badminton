@@ -152,6 +152,10 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## AI Credits 🤖
+- Code: Partially generated/assisted by Google Antigravity with Claude Sonnet 4.5
+- Icons: Created with Nano Banana Pro (Gemini AI)
+
 ## 🙏 Acknowledgments
 
 - Built with [Expo](https://expo.dev/)
