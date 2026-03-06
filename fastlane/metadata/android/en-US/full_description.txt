@@ -1,0 +1,9 @@
+A modern, feature-rich app for tracking badminton matches with real-time scoring, statistics, and match history.
+
+Features:
+- Real-time Score Tracking
+- Customizable Game Settings (11, 15, or 21 points)
+- Match Statistics
+- Match History
+- Action Logging
+- Dark Mode UI
