@@ -1,14 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Switch } from 'react-native';
+import { View, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Switch, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors, Spacing, Radius } from '../src/constants/Theme';
 import { Typography } from '../src/components/Typography';
 import { Button } from '../src/components/Button';
 import { Card } from '../src/components/Card';
 import { Input } from '../src/components/Input';
-import { getMatchHistory, clearHistory, getAutoSavePreference, setAutoSavePreference, getLanguagePreference, setLanguagePreference, clearAllHistory } from '../src/logic/Storage';
+import { getMatchHistory, clearHistory, getAutoSavePreference, setAutoSavePreference, getLanguagePreference, setLanguagePreference, clearAllHistory, deleteMatch } from '../src/logic/Storage';
 import { MatchState } from '../src/logic/ScoreEngine';
-import { History, Trophy, Save, Info, Award, Plus, Minus } from 'lucide-react-native';
+import { History, Trophy, Save, Info, Award, Plus, Minus, Trash2 } from 'lucide-react-native';
 import { Language, getTranslation } from '../src/logic/i18n';
 
 export default function HomeScreen() {
@@ -88,6 +88,24 @@ export default function HomeScreen() {
         setWinningScore(prev => prev > 1 ? prev - 1 : 1);
     };
 
+    const handleDeleteMatch = (id: string) => {
+        Alert.alert(
+            t.deleteMatch,
+            t.confirmDeleteMatch,
+            [
+                { text: t.cancel, style: 'cancel' },
+                {
+                    text: t.confirmDelete,
+                    style: 'destructive',
+                    onPress: async () => {
+                        await deleteMatch(id);
+                        loadHistory();
+                    }
+                }
+            ]
+        );
+    };
+
     const renderHistoryItem = ({ item }: { item: MatchState }) => {
         const p1Sets = item.sets.filter(s => s.player1Score > s.player2Score).length;
         const p2Sets = item.sets.filter(s => s.player2Score > s.player1Score).length;
@@ -118,12 +136,21 @@ export default function HomeScreen() {
                     <Typography variant="caption">
                         {new Date(item.startTime).toLocaleDateString()}
                     </Typography>
-                    <Button
-                        label={t.details}
-                        onPress={() => router.push(`/summary/${item.id}?history=true&lang=${language}`)}
-                        mode="ghost"
-                        size="sm"
-                    />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <TouchableOpacity
+                            onPress={() => handleDeleteMatch(item.id)}
+                            style={styles.deleteButton}
+                            activeOpacity={0.7}
+                        >
+                            <Trash2 size={16} color={Colors.textMuted} />
+                        </TouchableOpacity>
+                        <Button
+                            label={t.details}
+                            onPress={() => router.push(`/summary/${item.id}?history=true&lang=${language}`)}
+                            mode="ghost"
+                            size="sm"
+                        />
+                    </View>
                 </View>
             </Card>
         );
@@ -383,5 +410,9 @@ const styles = StyleSheet.create({
         borderRadius: Radius.lg,
         borderWidth: 2,
         borderColor: Colors.primary,
+    },
+    deleteButton: {
+        padding: Spacing.xs,
+        borderRadius: Radius.sm,
     },
 });

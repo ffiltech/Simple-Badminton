@@ -70,27 +70,41 @@ export const addPoint = (state: MatchState, player: PlayerNumber, reason: PointE
     newState.sets[state.currentSet] = updatedSet;
 
     // Handle service rotation
-    newState.servicePointCounter++;
-    if (newState.servicePointCounter >= 2) {
-        const oldServer = newState.currentServer;
-        newState.currentServer = newState.currentServer === 1 ? 2 : 1;
-        newState.servicePointCounter = 0;
-
-        // Log service change (skip if both players at 0)
-        if (updatedSet.player1Score > 0 || updatedSet.player2Score > 0) {
-            updatedSet.serviceChanges = [...updatedSet.serviceChanges, {
-                newServer: newState.currentServer,
-                reason: 'Auto',
-                timestamp: Date.now()
-            }];
-            newState.sets[state.currentSet] = updatedSet;
-        }
-    }
-
-    // Check if set is over
     const s1 = updatedSet.player1Score;
     const s2 = updatedSet.player2Score;
     const winScore = state.winningScore;
+
+    // In deuce mode (both players 1 point from winning score), service alternates every single point
+    const inDeuceMode = s1 >= winScore - 1 && s2 >= winScore - 1;
+
+    if (inDeuceMode) {
+        // Always change server after every point in deuce mode
+        newState.currentServer = newState.currentServer === 1 ? 2 : 1;
+        newState.servicePointCounter = 0;
+
+        updatedSet.serviceChanges = [...updatedSet.serviceChanges, {
+            newServer: newState.currentServer,
+            reason: 'Auto',
+            timestamp: Date.now()
+        }];
+        newState.sets[state.currentSet] = updatedSet;
+    } else {
+        newState.servicePointCounter++;
+        if (newState.servicePointCounter >= 2) {
+            newState.currentServer = newState.currentServer === 1 ? 2 : 1;
+            newState.servicePointCounter = 0;
+
+            // Log service change (skip if both players at 0)
+            if (s1 > 0 || s2 > 0) {
+                updatedSet.serviceChanges = [...updatedSet.serviceChanges, {
+                    newServer: newState.currentServer,
+                    reason: 'Auto',
+                    timestamp: Date.now()
+                }];
+                newState.sets[state.currentSet] = updatedSet;
+            }
+        }
+    }
 
     // Check if set is over (default 21, or custom. Deuce still applies until max 30)
     const isSetOver = (s1 >= winScore || s2 >= winScore) && (Math.abs(s1 - s2) >= 2 || s1 === 30 || s2 === 30);
@@ -129,12 +143,24 @@ export const subtractPoint = (state: MatchState, player: PlayerNumber): MatchSta
     else if (player === 2 && currentSet.player2Score > 0) currentSet.player2Score--;
     else return state; // No point to subtract
 
-    // Handle service state reversal
-    newState.servicePointCounter--;
-    if (newState.servicePointCounter < 0) {
-        // Revert to previous server
+    // Determine if the resulting score is still in deuce mode
+    const s1 = currentSet.player1Score;
+    const s2 = currentSet.player2Score;
+    const winScore = state.winningScore;
+    const inDeuceMode = s1 >= winScore - 1 && s2 >= winScore - 1;
+
+    if (inDeuceMode) {
+        // In deuce mode, every point swaps server, so undoing a point swaps back
         newState.currentServer = newState.currentServer === 1 ? 2 : 1;
-        newState.servicePointCounter = 1;
+        newState.servicePointCounter = 0;
+    } else {
+        // Handle service state reversal for normal mode
+        newState.servicePointCounter--;
+        if (newState.servicePointCounter < 0) {
+            // Revert to previous server
+            newState.currentServer = newState.currentServer === 1 ? 2 : 1;
+            newState.servicePointCounter = 1;
+        }
     }
 
     newState.sets[state.currentSet] = currentSet;

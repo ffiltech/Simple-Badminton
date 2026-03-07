@@ -80,3 +80,14 @@ export const clearAllHistory = async (): Promise<void> => {
         console.error('Error clearing history:', error);
     }
 };
+
+export const deleteMatch = async (id: string): Promise<void> => {
+    try {
+        const existingHistoryJson = await AsyncStorage.getItem(HISTORY_KEY);
+        const history: MatchState[] = existingHistoryJson ? JSON.parse(existingHistoryJson) : [];
+        const newHistory = history.filter(match => match.id !== id);
+        await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory));
+    } catch (error) {
+        console.error('Error deleting match:', error);
+    }
+};

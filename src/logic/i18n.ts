@@ -64,6 +64,9 @@ export interface Translations {
     matchTimeline: string;
     noActions: string;
     backToHome: string;
+    deleteMatch: string;
+    confirmDeleteMatch: string;
+    confirmDelete: string;
 
     // Point Reasons
     winner: string;
@@ -138,6 +141,9 @@ export const translations: Record<Language, Translations> = {
         matchTimeline: 'Timeline Match',
         noActions: 'Nessuna azione registrata',
         backToHome: 'Torna alla Home',
+        deleteMatch: 'Elimina',
+        confirmDeleteMatch: 'Eliminare questa partita dalla cronologia?',
+        confirmDelete: 'Elimina',
 
         // Point Reasons
         winner: 'Punto',
@@ -210,6 +216,9 @@ export const translations: Record<Language, Translations> = {
         matchTimeline: 'Match Timeline',
         noActions: 'No actions recorded',
         backToHome: 'Back to Home',
+        deleteMatch: 'Delete',
+        confirmDeleteMatch: 'Delete this match from history?',
+        confirmDelete: 'Delete',
 
         // Point Reasons
         winner: 'Point',
