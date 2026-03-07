@@ -13,7 +13,8 @@
                 "simulator": true
             },
             "android": {
-                "buildType": "apk"
+                "buildType": "apk",
+                "credentialsSource": "local"
             }
         },
         "production": {
@@ -21,7 +22,8 @@
                 "buildConfiguration": "Release"
             },
             "android": {
-                "buildType": "apk"
+                "buildType": "apk",
+                "credentialsSource": "local"
             }
         }
     },
