@@ -41,4 +41,17 @@ yarn-error.*
 
 # generated native folders
 /ios
-/android
+
+# Android - exclude secrets and local machine paths, but NOT the source
+# (F-Droid builds from source in android/)
+android/local.properties
+android/.gradle/
+android/app/debug.keystore
+android/app/.cxx/
+android/build/
+android/app/build/
+android/.kotlin/
+
+# Keystore / signing secrets (root level)
+release.keystore
+keystore.properties
