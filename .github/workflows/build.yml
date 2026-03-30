@@ -36,11 +36,13 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # The ubuntu-latest runner ships with Android SDK (cmdline-tools + platform-tools).
-      # We install the exact build-tools / platform / NDK versions declared in the project.
+      # android-actions/setup-android installs cmdline-tools and adds sdkmanager to PATH.
+      # Then we install the exact build-tools / platform / NDK versions the project needs.
+      - name: Set up Android SDK (cmdline-tools)
+        uses: android-actions/setup-android@v3
+
       - name: Install Android SDK components
         run: |
-          yes | sdkmanager --licenses > /dev/null 2>&1 || true
           sdkmanager \
             "build-tools;35.0.0" \
             "platforms;android-35" \
