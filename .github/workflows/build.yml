@@ -37,7 +37,6 @@ jobs:
           java-version: '17'
 
       # android-actions/setup-android installs cmdline-tools and adds sdkmanager to PATH.
-      # Then we install the exact build-tools / platform / NDK versions the project needs.
       - name: Set up Android SDK (cmdline-tools)
         uses: android-actions/setup-android@v3
 
@@ -54,8 +53,20 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      # Build unsigned release APKs (no keystore.properties present → signingConfig null).
-      # IzzyOnDroid / F-Droid sign the APK with their own key.
+      # Decode the signing keystore from the KEYSTORE_BASE64 secret and write keystore.properties.
+      # If the secret is absent (forks, external PRs) the file is not created and the build stays unsigned.
+      - name: Set up release signing
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > release.keystore
+          printf 'storeFile=../../release.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > keystore.properties
+
       - name: Build release APKs
         run: cd android && ./gradlew assembleRelease --no-daemon
         env:
@@ -78,7 +89,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: android/app/build/outputs/apk/release/*.apk
-          # Leave release notes / name/body untouched if release already exists
           generate_release_notes: false
           draft: false
           prerelease: false
