@@ -1,0 +1,82 @@
+name: Build Release APKs
+
+# Triggers on version tags (e.g. v1.0.6) or manual dispatch.
+# Builds on Linux so the path embedded in the APK is consistent across environments.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (informational only, uses current checkout)'
+        required: false
+
+permissions:
+  contents: write   # needed to create/update GitHub Releases
+
+jobs:
+  build:
+    name: Build Release APKs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # The ubuntu-latest runner ships with Android SDK (cmdline-tools + platform-tools).
+      # We install the exact build-tools / platform / NDK versions declared in the project.
+      - name: Install Android SDK components
+        run: |
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          sdkmanager \
+            "build-tools;35.0.0" \
+            "platforms;android-35" \
+            "ndk;27.1.12297006"
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      # Build unsigned release APKs (no keystore.properties present → signingConfig null).
+      # IzzyOnDroid / F-Droid sign the APK with their own key.
+      - name: Build release APKs
+        run: cd android && ./gradlew assembleRelease --no-daemon
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+
+      - name: List produced APKs
+        run: find android/app/build/outputs/apk/release -name '*.apk' -exec ls -lh {} \;
+
+      # Always upload as workflow artifacts (available for 90 days, useful for workflow_dispatch runs)
+      - name: Upload APKs as workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apks
+          path: android/app/build/outputs/apk/release/*.apk
+          retention-days: 90
+
+      # On tag pushes: create/update the matching GitHub Release and attach the APKs
+      - name: Attach APKs to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: android/app/build/outputs/apk/release/*.apk
+          # Leave release notes / name/body untouched if release already exists
+          generate_release_notes: false
+          draft: false
+          prerelease: false

@@ -2,4 +2,6 @@
   <string name="app_name">Simple Badminton</string>
   <string name="expo_splash_screen_resize_mode" translatable="false">contain</string>
   <string name="expo_splash_screen_status_bar_translucent" translatable="false">false</string>
+  <!-- Pin to localhost for reproducible builds: prevents RN from baking the build host's LAN IP into the APK -->
+  <string name="react_native_dev_server_ip" translatable="false">localhost</string>
 </resources>
