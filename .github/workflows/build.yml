@@ -59,11 +59,11 @@ jobs:
       # Workaround: upstream fix merged 2026-02-13 but not yet shipped (targets RN 0.85).
       # The RN Gradle Plugin calls getHostIpAddress() which returns the builder's LAN IP,
       # making the react_native_dev_server_ip string resource non-deterministic.
-      # Patch every copy of AgpConfiguratorUtils.kt found under the gradle-plugin directory.
+      # Match only the resValue call site, not the function definition itself.
       - name: Patch RN Gradle plugin – pin dev server IP to localhost
         run: |
           find node_modules/@react-native/gradle-plugin -name "AgpConfiguratorUtils.kt" \
-            -exec sed -i 's/getHostIpAddress()/"localhost"/g' {} +
+            -exec sed -i 's/"react_native_dev_server_ip", getHostIpAddress()/"react_native_dev_server_ip", "localhost"/g' {} +
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
