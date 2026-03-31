@@ -78,7 +78,7 @@ jobs:
             "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > keystore.properties
 
       - name: Build release APKs
-        run: cd android && ./gradlew assembleRelease --no-daemon
+        run: cd android && ./gradlew assembleRelease --no-daemon --init-script no-build-id.gradle
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
 

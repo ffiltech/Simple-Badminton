@@ -32,18 +32,22 @@ The workflow runs at: `https://github.com/ffiltech/Simple-Badminton/actions`
 # Install JavaScript dependencies
 npm ci
 
-# Build per-ABI release APKs
+# Patch the RN Gradle plugin to pin dev-server IP to localhost
+sed -i 's/"react_native_dev_server_ip", getHostIpAddress()/"react_native_dev_server_ip", "localhost"/g' \
+  node_modules/@react-native/gradle-plugin/react-native-gradle-plugin/src/main/kotlin/com/facebook/react/utils/AgpConfiguratorUtils.kt
+
+# Build per-ABI release APKs (--init-script disables ELF build IDs)
 cd android
 chmod +x gradlew
-./gradlew assembleRelease --no-daemon
+./gradlew assembleRelease --no-daemon --init-script no-build-id.gradle
 ```
 
 Output APKs:
 ```
 android/app/build/outputs/apk/release/
-  app-arm64-v8a-release.apk
-  app-armeabi-v7a-release.apk
-  app-x86_64-release.apk
+  app-arm64-v8a-release-unsigned.apk
+  app-armeabi-v7a-release-unsigned.apk
+  app-x86_64-release-unsigned.apk
 ```
 
 ---
@@ -69,6 +73,21 @@ React Native normally bakes the build machine's LAN IP into the APK as the
 Both ensure the value is always `localhost`, regardless of which machine performs the build.
 
 See [RN PR #55531](https://github.com/facebook/react-native/pull/55531) — once merged into a stable RN release, these workarounds become no-ops.
+
+### ELF Build IDs in native libraries
+
+The Android NDK linker normally embeds a SHA-1 Build ID in every `.so` file. This hash
+changes when the cmake version or ANDROID_HOME path differs between build environments,
+making native libraries non-reproducible.
+
+**Fix:** `android/no-build-id.gradle` is a Gradle init script that appends
+`-DCMAKE_SHARED_LINKER_FLAGS_INIT=-Wl,--build-id=none` to the cmake configuration
+of **every** Android sub-project (app, expo-modules-core, react-native-screens, etc.).
+
+It must be passed when invoking Gradle:
+```bash
+./gradlew assembleRelease --no-daemon --init-script no-build-id.gradle
+```
 
 ### PNG crunching
 

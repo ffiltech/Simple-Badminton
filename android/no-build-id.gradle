@@ -1,0 +1,30 @@
+/**
+ * Gradle init script – disable ELF build IDs for reproducible native libraries.
+ *
+ * Build IDs are SHA-1 hashes embedded by the linker in the .note.gnu.build-id ELF section.
+ * They differ across build environments (cmake version, toolchain path, ANDROID_HOME) even
+ * when source code is identical, making .so files non-reproducible.
+ * Passing -Wl,--build-id=none strips that section, making the binaries deterministic.
+ *
+ * Usage (from the android/ directory):
+ *   ./gradlew assembleRelease --no-daemon --init-script no-build-id.gradle
+ *
+ * Applied to every Android sub-project in the multi-project build via allprojects/afterEvaluate,
+ * covering app, expo-modules-core, react-native-screens, react-native-svg, etc.
+ */
+allprojects {
+    afterEvaluate { proj ->
+        def android = proj.extensions.findByName("android")
+        if (!android) return
+        try {
+            android.defaultConfig.externalNativeBuild.cmake.with {
+                // CMAKE_SHARED_LINKER_FLAGS_INIT is a cmake cache-initialiser variable.
+                // It is honoured before CMakeLists.txt runs, so project scripts can still
+                // append their own link options without losing this flag.
+                arguments("-DCMAKE_SHARED_LINKER_FLAGS_INIT=-Wl,--build-id=none")
+            }
+        } catch (Exception ignored) {
+            // Project does not use cmake – nothing to do.
+        }
+    }
+}
