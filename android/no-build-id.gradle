@@ -1,30 +1,38 @@
 /**
- * Gradle init script – disable ELF build IDs for reproducible native libraries.
+ * Gradle init script for reproducible native library builds.
  *
- * Build IDs are SHA-1 hashes embedded by the linker in the .note.gnu.build-id ELF section.
- * They differ across build environments (cmake version, toolchain path, ANDROID_HOME) even
- * when source code is identical, making .so files non-reproducible.
- * Passing -Wl,--build-id=none strips that section, making the binaries deterministic.
+ * The Android NDK compiler (clang) embeds the absolute paths to the NDK headers and
+ * toolchain in DWARF debug info inside every .so file.  Because ANDROID_HOME differs
+ * between build environments (e.g. /usr/local/lib/android/sdk on GitHub-hosted runners
+ * vs /opt/sdk on IzzyOnDroid), those embedded paths differ, which in turn changes the
+ * SHA-1 Build ID that lld writes into .note.gnu.build-id.
+ *
+ * Fixes applied to every cmake-based Android sub-project (app, expo-modules-core,
+ * react-native-screens, react-native-svg, react-native-safe-area-context, …):
+ *   -ffile-prefix-map=<ANDROID_HOME>=  → strips the NDK host path
+ *   -ffile-prefix-map=<project-root>=  → strips the workspace path
+ *   -Wl,--build-id=none               → disables the ELF build-id section entirely
  *
  * Usage (from the android/ directory):
  *   ./gradlew assembleRelease --no-daemon --init-script no-build-id.gradle
- *
- * Applied to every Android sub-project in the multi-project build via allprojects/afterEvaluate,
- * covering app, expo-modules-core, react-native-screens, react-native-svg, etc.
  */
 allprojects {
     afterEvaluate { proj ->
         def android = proj.extensions.findByName("android")
         if (!android) return
         try {
-            android.defaultConfig.externalNativeBuild.cmake.with {
-                // CMAKE_SHARED_LINKER_FLAGS_INIT is a cmake cache-initialiser variable.
-                // It is honoured before CMakeLists.txt runs, so project scripts can still
-                // append their own link options without losing this flag.
-                arguments("-DCMAKE_SHARED_LINKER_FLAGS_INIT=-Wl,--build-id=none")
-            }
+            def androidHome = System.getenv("ANDROID_HOME") ?: ""
+            def appRoot    = proj.rootDir.parentFile.absolutePath
+
+            def extra = "-ffile-prefix-map=${appRoot}= -ffile-prefix-map=${androidHome}= -Wl,--build-id=none"
+
+            def cmake = android.defaultConfig.externalNativeBuild.cmake
+            def prevC   = cmake.cFlags?.trim()   ?: ""
+            def prevCpp = cmake.cppFlags?.trim() ?: ""
+            cmake.cFlags   = prevC   ? "${prevC} ${extra}"   : extra
+            cmake.cppFlags = prevCpp ? "${prevCpp} ${extra}" : extra
         } catch (Exception ignored) {
-            // Project does not use cmake – nothing to do.
+            // project does not use cmake – nothing to do
         }
     }
 }
