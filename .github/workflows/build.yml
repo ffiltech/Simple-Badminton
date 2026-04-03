@@ -65,6 +65,30 @@ jobs:
           find node_modules/@react-native/gradle-plugin -name "AgpConfiguratorUtils.kt" \
             -exec sed -i 's/"react_native_dev_server_ip", getHostIpAddress()/"react_native_dev_server_ip", "localhost"/g' {} +
 
+      # Reproducible native libraries: strip the NDK host-path from DWARF debug info and
+      # disable ELF build IDs.  The NDK compiler embeds ANDROID_HOME (e.g. /opt/sdk vs
+      # /usr/local/lib/android/sdk) in debug sections; -ffile-prefix-map normalises it.
+      # -Wl,--build-id=none removes the .note.gnu.build-id ELF section entirely.
+      # Patching CMakeLists.txt directly is more reliable than the Gradle DSL init-script
+      # route: cmake always processes these files regardless of AGP internals.
+      - name: Patch CMakeLists – strip ANDROID_HOME path and disable ELF build IDs
+        run: |
+          PATCH=$(printf '\n# reproducible-builds\nif(ANDROID)\n  add_compile_options(-ffile-prefix-map=$ENV{ANDROID_HOME}=)\n  add_link_options(-Wl,--build-id=none)\nendif()\n')
+          for f in \
+            "node_modules/expo-modules-core/android/CMakeLists.txt" \
+            "node_modules/expo-modules-core/android/src/fabric/CMakeLists.txt" \
+            "node_modules/react-native-safe-area-context/android/src/main/jni/CMakeLists.txt" \
+            "node_modules/react-native-screens/android/CMakeLists.txt" \
+            "node_modules/react-native-screens/android/src/main/jni/CMakeLists.txt" \
+            "node_modules/react-native-svg/android/src/main/jni/CMakeLists.txt"; do
+            if [ -f "$f" ]; then
+              printf '%s\n' "$PATCH" >> "$f"
+              echo "patched: $f"
+            else
+              echo "not found (ok): $f"
+            fi
+          done
+
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 

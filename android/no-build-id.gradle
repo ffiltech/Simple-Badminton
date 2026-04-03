@@ -1,17 +1,13 @@
 /**
  * Gradle init script for reproducible native library builds.
  *
- * The Android NDK compiler (clang) embeds the absolute paths to the NDK headers and
- * toolchain in DWARF debug info inside every .so file.  Because ANDROID_HOME differs
- * between build environments (e.g. /usr/local/lib/android/sdk on GitHub-hosted runners
- * vs /opt/sdk on IzzyOnDroid), those embedded paths differ, which in turn changes the
- * SHA-1 Build ID that lld writes into .note.gnu.build-id.
+ * Primary fix: the CI workflow patches CMakeLists.txt files directly (see build.yml).
+ * This script handles libappmodules.so which is built from a cmake file generated at
+ * build time by expo-module-gradle-plugin (so it cannot be patched statically).
  *
- * Fixes applied to every cmake-based Android sub-project (app, expo-modules-core,
- * react-native-screens, react-native-svg, react-native-safe-area-context, …):
- *   -ffile-prefix-map=<ANDROID_HOME>=  → strips the NDK host path
- *   -ffile-prefix-map=<project-root>=  → strips the workspace path
- *   -Wl,--build-id=none               → disables the ELF build-id section entirely
+ * Flags applied:
+ *   -ffile-prefix-map=$ANDROID_HOME=  strips NDK host path from DWARF debug info
+ *   -Wl,--build-id=none               disables the ELF .note.gnu.build-id section
  *
  * Usage (from the android/ directory):
  *   ./gradlew assembleRelease --no-daemon --init-script no-build-id.gradle
@@ -20,19 +16,25 @@ allprojects {
     afterEvaluate { proj ->
         def android = proj.extensions.findByName("android")
         if (!android) return
+
+        def androidHome = System.getenv("ANDROID_HOME") ?: ""
+        def extra = "-ffile-prefix-map=${androidHome}= -Wl,--build-id=none"
+
         try {
-            def androidHome = System.getenv("ANDROID_HOME") ?: ""
-            def appRoot    = proj.rootDir.parentFile.absolutePath
-
-            def extra = "-ffile-prefix-map=${appRoot}= -ffile-prefix-map=${androidHome}= -Wl,--build-id=none"
-
             def cmake = android.defaultConfig.externalNativeBuild.cmake
-            def prevC   = cmake.cFlags?.trim()   ?: ""
-            def prevCpp = cmake.cppFlags?.trim() ?: ""
-            cmake.cFlags   = prevC   ? "${prevC} ${extra}"   : extra
-            cmake.cppFlags = prevCpp ? "${prevCpp} ${extra}" : extra
-        } catch (Exception ignored) {
-            // project does not use cmake – nothing to do
+            if (cmake == null) {
+                println "[no-build-id] ${proj.name}: cmake is null, skipping"
+                return
+            }
+            // arguments() appends to the existing list – safe to call multiple times
+            cmake.arguments(
+                "-DCMAKE_C_FLAGS_INIT=${extra}",
+                "-DCMAKE_CXX_FLAGS_INIT=${extra}",
+                "-DCMAKE_SHARED_LINKER_FLAGS_INIT=-Wl,--build-id=none"
+            )
+            println "[no-build-id] ${proj.name}: cmake arguments appended OK"
+        } catch (Exception e) {
+            println "[no-build-id] ${proj.name}: EXCEPTION ${e.class.simpleName} – ${e.message}"
         }
     }
 }
