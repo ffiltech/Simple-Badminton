@@ -1,6 +1,6 @@
 name: Build Release APKs
 
-# Triggers on version tags (e.g. v1.0.6) or manual dispatch.
+# Triggers on version tags (e.g. v1.0.7) or manual dispatch.
 # Builds on Linux so the path embedded in the APK is consistent across environments.
 on:
   push:
@@ -56,38 +56,10 @@ jobs:
       - name: Install JS dependencies
         run: npm ci
 
-      # Workaround: upstream fix merged 2026-02-13 but not yet shipped (targets RN 0.85).
-      # The RN Gradle Plugin calls getHostIpAddress() which returns the builder's LAN IP,
-      # making the react_native_dev_server_ip string resource non-deterministic.
-      # Match only the resValue call site, not the function definition itself.
-      - name: Patch RN Gradle plugin – pin dev server IP to localhost
-        run: |
-          find node_modules/@react-native/gradle-plugin -name "AgpConfiguratorUtils.kt" \
-            -exec sed -i 's/"react_native_dev_server_ip", getHostIpAddress()/"react_native_dev_server_ip", "localhost"/g' {} +
-
-      # Reproducible native libraries: strip the NDK host-path from DWARF debug info and
-      # disable ELF build IDs.  The NDK compiler embeds ANDROID_HOME (e.g. /opt/sdk vs
-      # /usr/local/lib/android/sdk) in debug sections; -ffile-prefix-map normalises it.
-      # -Wl,--build-id=none removes the .note.gnu.build-id ELF section entirely.
-      # Patching CMakeLists.txt directly is more reliable than the Gradle DSL init-script
-      # route: cmake always processes these files regardless of AGP internals.
-      - name: Patch CMakeLists – strip ANDROID_HOME path and disable ELF build IDs
-        run: |
-          PATCH=$(printf '\n# reproducible-builds\nif(ANDROID)\n  add_compile_options(-ffile-prefix-map=$ENV{ANDROID_HOME}=)\n  add_link_options(-Wl,--build-id=none)\nendif()\n')
-          for f in \
-            "node_modules/expo-modules-core/android/CMakeLists.txt" \
-            "node_modules/expo-modules-core/android/src/fabric/CMakeLists.txt" \
-            "node_modules/react-native-safe-area-context/android/src/main/jni/CMakeLists.txt" \
-            "node_modules/react-native-screens/android/CMakeLists.txt" \
-            "node_modules/react-native-screens/android/src/main/jni/CMakeLists.txt" \
-            "node_modules/react-native-svg/android/src/main/jni/CMakeLists.txt"; do
-            if [ -f "$f" ]; then
-              printf '%s\n' "$PATCH" >> "$f"
-              echo "patched: $f"
-            else
-              echo "not found (ok): $f"
-            fi
-          done
+      # Apply all reproducibility patches (dev-server IP fix + CMakeLists.txt overrides).
+      # This script lives in the repo so any third-party rebuilder can run the same patches.
+      - name: Apply reproducibility patches
+        run: bash scripts/patch-reproducible.sh
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
