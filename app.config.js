@@ -25,7 +25,7 @@ export default {
     expo: {
         name: "Simple Badminton",
         slug: "simple-badminton",
-        version: "1.0.7",
+        version: "1.0.8",
         orientation: "default",
         icon: "./assets/icon.png",
         userInterfaceStyle: "dark",
@@ -40,14 +40,14 @@ export default {
         ios: {
             supportsTablet: true,
             bundleIdentifier: "com.simplebadminton.app",
-            buildNumber: "7",
+            buildNumber: "8",
             infoPlist: {
                 ITSAppUsesNonExemptEncryption: false,
             },
         },
         android: {
             package: "com.simplebadminton.app",
-            versionCode: 7,
+            versionCode: 8,
             adaptiveIcon: {
                 foregroundImage: "./assets/adaptive-icon.png",
                 backgroundColor: "#E8E8E8",

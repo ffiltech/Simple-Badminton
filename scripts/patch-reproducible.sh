@@ -10,8 +10,11 @@
 #
 set -euo pipefail
 
-SCRIPTS_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$SCRIPTS_DIR/.." && pwd)"
+SCRIPTS_DIR="$(dirname "$0")"
+ROOT="$(dirname "$SCRIPTS_DIR")"
+
+# Resolve to absolute path so cd to a sub-dir doesn't break relative paths
+ROOT="$(cd "$ROOT" && pwd)"
 cd "$ROOT"
 
 echo "=== patch-reproducible.sh starting (root: $ROOT) ==="
@@ -36,20 +39,76 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 2.  CMakeLists.txt – strip ANDROID_HOME from DWARF debug info + disable
-#     ELF build IDs.
+# 2.  CMakeLists.txt – strip NDK host path from DWARF debug info and remove
+#     ELF build IDs from every compiled shared library.
 #
-#     The NDK compiler (clang) embeds the absolute ANDROID_HOME / NDK path in
-#     DWARF debug sections.  Because different build hosts use different SDK
-#     install locations (e.g. /opt/sdk vs /usr/local/lib/android/sdk) those
-#     embedded paths differ, which in turn changes the SHA-1 Build ID that lld
-#     writes into .note.gnu.build-id, making the .so files non-reproducible.
+#     Root cause: the NDK compiler embeds ANDROID_HOME (e.g. /opt/sdk vs
+#     /usr/local/lib/android/sdk) in DWARF debug sections.  Because different
+#     build hosts use different SDK install paths the embedded paths differ,
+#     which changes the SHA-1 Build ID that lld writes into
+#     .note.gnu.build-id, making the .so files non-reproducible.
 #
-#     -ffile-prefix-map=$ENV{ANDROID_HOME}=  strips the NDK host path at
-#       compile time (cmake evaluates $ENV{...} during configuration).
-#     -Wl,--build-id=none  removes the ELF build-id section entirely.
+#     Two-layer fix:
+#       1. -ffile-prefix-map=$ENV{ANDROID_HOME}= strips the NDK host path
+#          at compile time (cmake evaluates $ENV{...} during configuration).
+#       2. cmake POST_BUILD custom command that calls llvm-objcopy
+#          --remove-section .note.gnu.build-id on every SHARED_LIBRARY
+#          target.  This is the belt-and-suspenders layer: it works even if
+#          the -Wl,--build-id=none linker flag is silently swallowed by the
+#          NDK toolchain file.  cmake_language(DEFER CALL … ) is used so the
+#          function runs after the whole CMakeLists.txt is processed and all
+#          targets are defined.
 # ---------------------------------------------------------------------------
-CMAKE_PATCH=$(printf '\n# reproducible-builds (added by scripts/patch-reproducible.sh)\nif(ANDROID)\n  add_compile_options(-ffile-prefix-map=$ENV{ANDROID_HOME}=)\n  add_link_options(-Wl,--build-id=none)\nendif()\n')
+
+# Read the cmake snippet from a heredoc so it stays readable and easy to diff
+read -r -d '' CMAKE_PATCH << 'CMAKE_PATCH_EOF' || true
+
+# reproducible-builds (added by scripts/patch-reproducible.sh)
+if(ANDROID)
+  # Layer 1: strip ANDROID_HOME from DWARF debug info at compile time
+  add_compile_options(-ffile-prefix-map=$ENV{ANDROID_HOME}=)
+  # Layer 1b: ask the linker not to embed a Build ID (may be ignored by NDK toolchain)
+  add_link_options(-Wl,--build-id=none)
+  # Layer 2: belt-and-suspenders – remove .note.gnu.build-id from every
+  # shared library using llvm-objcopy immediately after it is linked.
+  # cmake_language(DEFER) runs after the entire directory scope is processed
+  # so all add_library() targets are already registered at that point.
+  if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.18")
+    cmake_language(DEFER CALL _rb_strip_all_build_ids "${CMAKE_CURRENT_SOURCE_DIR}")
+  endif()
+  function(_rb_strip_all_build_ids dir)
+    # Locate the NDK's llvm-objcopy (CMAKE_OBJCOPY may not be set for all toolchains)
+    find_program(_llvm_objcopy
+      NAMES llvm-objcopy
+      PATHS
+        "${ANDROID_TOOLCHAIN_ROOT}/bin"
+        "${CMAKE_ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin"
+        "${CMAKE_ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin"
+      NO_DEFAULT_PATH
+    )
+    if(NOT _llvm_objcopy)
+      message(STATUS "[repro] llvm-objcopy not found – build IDs may remain")
+      return()
+    endif()
+    get_property(_targets DIRECTORY "${dir}" PROPERTY BUILDSYSTEM_TARGETS)
+    foreach(_t IN LISTS _targets)
+      if(TARGET ${_t})
+        get_target_property(_type ${_t} TYPE)
+        if(_type STREQUAL "SHARED_LIBRARY")
+          add_custom_command(TARGET ${_t} POST_BUILD
+            COMMAND "${_llvm_objcopy}"
+              --remove-section .note.gnu.build-id
+              $<TARGET_FILE:${_t}>
+            COMMENT "[repro] strip build-id from ${_t}"
+            VERBATIM
+          )
+          message(STATUS "[repro] registered build-id strip POST_BUILD for: ${_t}")
+        endif()
+      endif()
+    endforeach()
+  endfunction()
+endif()
+CMAKE_PATCH_EOF
 
 CMAKE_FILES=(
     "node_modules/expo-modules-core/android/CMakeLists.txt"
@@ -62,7 +121,6 @@ CMAKE_FILES=(
 
 for f in "${CMAKE_FILES[@]}"; do
     if [ -f "$f" ]; then
-        # Guard against double-patching (e.g. if the script is called twice)
         if grep -q "reproducible-builds" "$f" 2>/dev/null; then
             echo "already patched (cmake): $f"
         else
