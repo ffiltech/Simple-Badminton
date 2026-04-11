@@ -99,19 +99,10 @@ android {
         applicationId 'com.simplebadminton.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 9
-        versionName "1.0.9"
+        versionCode 10
+        versionName "1.0.10"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
-
-        def androidHome = System.getenv("ANDROID_HOME") ?: ""
-        externalNativeBuild {
-            cmake {
-                arguments "-DCMAKE_C_FLAGS_INIT=-ffile-prefix-map=${androidHome}= -Wl,--build-id=none",
-                          "-DCMAKE_CXX_FLAGS_INIT=-ffile-prefix-map=${androidHome}= -Wl,--build-id=none",
-                          "-DCMAKE_SHARED_LINKER_FLAGS_INIT=-Wl,--build-id=none"
-            }
-        }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
