@@ -2,62 +2,69 @@
  * Gradle init script – strip .note.gnu.build-id from every shared library
  * produced during the Android build so APKs are reproducible across hosts.
  *
- * Background: the NDK compiler embeds ANDROID_HOME in DWARF debug sections
- * at compile time.  Different build hosts install the SDK at different paths,
- * so the embedded path differs, which changes the SHA-1 that lld writes into
- * .note.gnu.build-id, making .so files non-reproducible.
+ * Background: the NDK compiler embeds ANDROID_HOME in DWARF debug sections.
+ * Different build hosts have different SDK paths, which changes the SHA-1
+ * written into .note.gnu.build-id, making .so files non-reproducible.
  *
- * Primary fix used here: post-build strip via llvm-objcopy applied after
- * every merge*NativeLibs task.  This covers libappmodules.so which is built
- * from a CMakeLists.txt generated at runtime by expo-module-gradle-plugin and
- * therefore cannot be patched statically by scripts/patch-reproducible.sh.
+ * Fix: after every merge*NativeLibs task, run llvm-objcopy to remove the
+ * .note.gnu.build-id section from each .so.  llvm-objcopy is located via
+ * $ANDROID_HOME so we never touch android.ndkDirectory (which throws on
+ * sub-projects that don't configure NDK, such as :expo modules).
  *
  * Usage (from the android/ directory):
  *   ./gradlew assembleRelease --no-daemon --init-script no-build-id.gradle
  */
+
+def findObjcopy = {
+    def home = System.getenv("ANDROID_HOME") ?: ""
+    if (!home) return null
+    def ndkRoot = new File("${home}/ndk")
+    if (!ndkRoot.isDirectory()) return null
+    def found = null
+    ndkRoot.eachDir { ndkVer ->
+        if (found) return
+        def prebuilt = new File("${ndkVer}/toolchains/llvm/prebuilt")
+        if (!prebuilt.isDirectory()) return
+        prebuilt.eachDir { platform ->
+            if (found) return
+            def c = new File("${platform}/bin/llvm-objcopy")
+            if (c.exists()) found = c.absolutePath
+        }
+    }
+    return found
+}
+
+final String OBJCOPY = findObjcopy()
+
+if (OBJCOPY) {
+    logger.lifecycle("[no-build-id] llvm-objcopy: ${OBJCOPY}")
+} else {
+    logger.warn("[no-build-id] llvm-objcopy not found – build-id strip skipped")
+}
+
 allprojects {
     afterEvaluate { proj ->
-        def android = proj.extensions.findByName("android")
-        if (!android) return
+        if (!OBJCOPY) return
+        if (!proj.extensions.findByName("android")) return
 
-        def ndkDir = android.ndkDirectory
-        if (!ndkDir) {
-            println "[no-build-id] ${proj.name}: ndkDirectory is null, skipping"
-            return
-        }
-
-        def objcopy = null
-        try {
-            new File("${ndkDir}/toolchains/llvm/prebuilt").eachDir { platform ->
-                def c = new File("${platform}/bin/llvm-objcopy")
-                if (c.exists()) objcopy = c.absolutePath
-            }
-        } catch (ignored) {}
-
-        if (!objcopy) {
-            println "[no-build-id] ${proj.name}: llvm-objcopy not found under ${ndkDir}"
-            return
-        }
-
-        final String finalObjcopy = objcopy
-
-        proj.tasks.matching { it.name.startsWith("merge") && it.name.endsWith("NativeLibs") }
-            .configureEach { mergeTask ->
-                mergeTask.doLast {
-                    mergeTask.outputs.files.each { out ->
-                        if (!(out instanceof File) || !out.isDirectory()) return
-                        out.eachFileRecurse { f ->
-                            if (!f.name.endsWith('.so')) return
-                            proj.exec {
-                                commandLine finalObjcopy,
-                                    '--remove-section', '.note.gnu.build-id',
-                                    f.absolutePath
-                            }
-                            println "[no-build-id] stripped: ${f.name}"
+        proj.tasks.matching { t ->
+            t.name.startsWith("merge") && t.name.endsWith("NativeLibs")
+        }.configureEach { mergeTask ->
+            mergeTask.doLast {
+                mergeTask.outputs.files.each { out ->
+                    if (!(out instanceof File) || !out.isDirectory()) return
+                    out.eachFileRecurse { f ->
+                        if (!f.name.endsWith('.so')) return
+                        proj.exec {
+                            commandLine OBJCOPY,
+                                '--remove-section', '.note.gnu.build-id',
+                                f.absolutePath
                         }
+                        println "[no-build-id] stripped: ${f.name}"
                     }
                 }
-                println "[no-build-id] ${proj.name}: registered post-strip on ${mergeTask.name}"
             }
+            println "[no-build-id] ${proj.name}: post-strip registered for ${mergeTask.name}"
+        }
     }
 }
