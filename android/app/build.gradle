@@ -99,8 +99,8 @@ android {
         applicationId 'com.simplebadminton.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 11
-        versionName "1.0.11"
+        versionCode 12
+        versionName "1.0.12"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
@@ -167,7 +167,50 @@ android {
     }
 }
 
-// Apply static values from `gradle.properties` to the `android.packagingOptions`
+// Strip .note.gnu.build-id from every merged .so before APK packaging.
+// The NDK linker embeds ANDROID_HOME in DWARF debug info; different build hosts
+// have different SDK paths so the resulting Build ID hash differs, making APKs
+// non-reproducible. Removing the section here makes all hosts produce the same
+// output regardless of where the SDK is installed.
+// This block runs unconditionally on every Gradle invocation (no --init-script needed).
+afterEvaluate {
+    def home = System.getenv("ANDROID_HOME") ?: ""
+    def objcopy = null
+    if (home) {
+        def ndkRoot = new File("${home}/ndk")
+        if (ndkRoot.isDirectory()) {
+            ndkRoot.eachDir { ver ->
+                if (objcopy) return
+                def prebuilt = new File("${ver}/toolchains/llvm/prebuilt")
+                if (!prebuilt.isDirectory()) return
+                prebuilt.eachDir { platform ->
+                    if (objcopy) return
+                    def c = new File("${platform}/bin/llvm-objcopy")
+                    if (c.exists()) objcopy = c.absolutePath
+                }
+            }
+        }
+    }
+    if (!objcopy) {
+        logger.warn("[repro] llvm-objcopy not found – Build ID strip skipped")
+        return
+    }
+    final String oc = objcopy
+    tasks.matching { it.name.startsWith("merge") && it.name.endsWith("NativeLibs") }
+        .configureEach { t ->
+            t.doLast {
+                t.outputs.files.each { dir ->
+                    if (!(dir instanceof File) || !dir.isDirectory()) return
+                    dir.eachFileRecurse { f ->
+                        if (!f.name.endsWith('.so')) return
+                        exec { commandLine oc, '--remove-section', '.note.gnu.build-id', f.absolutePath }
+                        logger.info("[repro] stripped Build ID: ${f.name}")
+                    }
+                }
+            }
+        }
+}
+
 // Accepts values in comma delimited lists, example:
 // android.packagingOptions.pickFirsts=/LICENSE,**/picasa.ini
 ["pickFirsts", "excludes", "merges", "doNotStrip"].each { prop ->

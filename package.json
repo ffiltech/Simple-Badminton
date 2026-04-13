@@ -1,6 +1,6 @@
 {
   "name": "simple-badminton",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "A React Native Expo app for managing badminton matches with score tracking and statistics",
   "main": "expo-router/entry",
   "scripts": {
